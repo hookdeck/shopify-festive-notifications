@@ -1,4 +1,4 @@
-# Shopify Live Notifications Demo
+# Shopify Festive Real-Time Notifications Demo
 
 A developer tutorial application demonstrating how to integrate Shopify webhooks, the Hookdeck Event Gateway, and Ably to display real-time purchase notifications in a Shopify online store with festive animations.
 
