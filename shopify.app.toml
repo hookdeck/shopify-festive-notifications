@@ -1,32 +1,37 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "d9add7352070d5f3b959894c2600531a"
-application_url = "https://calibration-skill-oo-span.trycloudflare.com"
+application_url = "https://gallery-hardcover-rm-genuine.trycloudflare.com"
 embedded = true
 name = "live-notifications"
 handle = "live-notifications"
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "hookdeck-dev.myshopify.com"
 
 [webhooks]
 api_version = "2024-10"
 
   [[webhooks.subscriptions]]
+  topics = [ "orders/create" ]
+  uri = "/webhooks/orders/create"
+
+  [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
   uri = "/webhooks/app/uninstalled"
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = "read_products,read_orders"
 
 [auth]
 redirect_urls = [
-  "https://calibration-skill-oo-span.trycloudflare.com/auth/callback",
-  "https://calibration-skill-oo-span.trycloudflare.com/auth/shopify/callback",
-  "https://calibration-skill-oo-span.trycloudflare.com/api/auth/callback"
+  "https://gallery-hardcover-rm-genuine.trycloudflare.com/auth/callback",
+  "https://gallery-hardcover-rm-genuine.trycloudflare.com/auth/shopify/callback",
+  "https://gallery-hardcover-rm-genuine.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
 embedded = false
-
-[build]
-dev_store_url = "hookdeck-dev.myshopify.com"
-automatically_update_urls_on_dev = true
