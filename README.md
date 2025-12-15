@@ -1,363 +1,370 @@
-# Shopify App Template - Remix
+# Shopify Live Notifications Demo
 
-This is a template for building a [Shopify app](https://shopify.dev/docs/apps/getting-started) using the [Remix](https://remix.run) framework.
+A developer tutorial application demonstrating how to integrate Shopify webhooks, the Hookdeck Event Gateway, and Ably to display real-time purchase notifications in a Shopify online store with festive animations.
 
-Rather than cloning this repo, you can use your preferred package manager and the Shopify CLI with [these steps](https://shopify.dev/docs/apps/getting-started/create).
+## What This Demonstrates
 
-Visit the [`shopify.dev` documentation](https://shopify.dev/docs/api/shopify-app-remix) for more details on the Remix app package.
+This is an example/tutorial app that shows developers how to:
 
-## Quick start
+- Receive Shopify order webhooks reliably through the Hookdeck Event Gateway
+- Process webhook events in a Remix-based Shopify app
+- Forward events to Ably for real-time pub/sub messaging
+- Display live notifications in a Shopify storefront using theme app extensions
+- Create interactive UI elements with holiday-themed animations
 
-### Prerequisites
+**Note:** This is a demonstration app for learning purposes, not a production-ready application for merchants to install.
 
-Before you begin, you'll need the following:
+## Architecture Overview
 
-1. **Node.js**: [Download and install](https://nodejs.org/en/download/) it if you haven't already.
-2. **Shopify Partner Account**: [Create an account](https://partners.shopify.com/signup) if you don't have one.
-3. **Test Store**: Set up either a [development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) or a [Shopify Plus sandbox store](https://help.shopify.com/en/partners/dashboard/managing-stores/plus-sandbox-store) for testing your app.
+The complete data flow works as follows:
 
-### Setup
-
-If you used the CLI to create the template, you can skip this section.
-
-Using yarn:
-
-```shell
-yarn install
+```
+1. Order Created in Shopify
+   ↓
+2. Shopify triggers orders/create webhook
+   ↓
+3. Event Gateway receives and queues the webhook at the Source
+   ↓
+4. Event Gateway delivers webhook to app webhook handler
+   (app/routes/webhooks.orders.create.tsx)
+   ↓
+5. App processes event and publishes to Event Gateway queue
+   (app/helpers/webhooks.ts)
+   ↓
+6. Event Gateway queues and forwards event to Ably via REST API
+   ↓
+7. Ably broadcasts to all connected clients
+   ↓
+8. Storefront receives event via Ably Realtime
+   (extensions/live-notifications/assets/notifications.js)
+   ↓
+9. Notification displayed with snowflake animation
+   (extensions/live-notifications/blocks/notifications.liquid)
 ```
 
-Using npm:
+## Key Components
 
-```shell
+### Shopify App vs Extension
+
+This project contains both a **Shopify app** and a **theme app extension**:
+
+- **Shopify App**: The backend Remix application that handles webhooks, manages data, and provides an admin interface. It runs on a server and integrates with Shopify's Admin API.
+- **Theme App Extension**: Frontend components that appear in the merchant's online store. Extensions add blocks, sections, or functionality directly to the storefront without modifying theme code.
+
+### Backend (Remix App)
+
+- **[`app/routes/webhooks.orders.create.tsx`](app/routes/webhooks.orders.create.tsx)** - Webhook endpoint that receives order creation events from Shopify via the Event Gateway
+- **[`app/helpers/webhooks.ts`](app/helpers/webhooks.ts)** - Helper functions for managing webhooks, including:
+  - Publishing events to the Event Gateway queue
+  - Managing webhook subscriptions via Shopify Admin GraphQL API
+  - **Note:** Connection setup should be handled by a setup script (see Setup Instructions)
+
+### Storefront Extension
+
+- **[`extensions/live-notifications/blocks/notifications.liquid`](extensions/live-notifications/blocks/notifications.liquid)** - Theme app extension block with festive holiday lights and snowfall animations
+- **[`extensions/live-notifications/assets/notifications.js`](extensions/live-notifications/assets/notifications.js)** - Client-side JavaScript that:
+  - Connects to Ably Realtime
+  - Subscribes to notification events
+  - Creates snowflake animations
+  - Handles interactive elements (clickable lights and snowflakes)
+- **[`extensions/live-notifications/src/notifications.scss`](extensions/live-notifications/src/notifications.scss)** - Source SCSS styles (compiled to [`notifications.css`](extensions/live-notifications/assets/notifications.css))
+- **[`extensions/live-notifications/assets/notifications.css`](extensions/live-notifications/assets/notifications.css)** - Compiled CSS (generated from SCSS, not manually edited)
+
+### Configuration
+
+- **[`shopify.app.toml`](shopify.app.toml)** - Shopify app configuration including:
+  - Webhook subscriptions for `orders/create`
+  - Required OAuth scopes (`read_products`, `read_orders`)
+  - App authentication settings
+- **[`package.json`](package.json)** - Dependencies including:
+  - `@shopify/shopify-app-remix` - Shopify app framework
+  - Ably client library (loaded via CDN in storefront)
+  - **Note:** The `@hookdeck/sdk` dependency is deprecated and should be removed
+
+## Prerequisites
+
+Before setting up this app, you'll need:
+
+1. **Node.js** (v18.20+, v20.10+, or v21.0.0+)
+2. **Shopify Partner Account** - [Create one here](https://partners.shopify.com/)
+3. **Shopify Development Store** - Create from your Partner Dashboard
+4. **Hookdeck Account** - [Sign up at hookdeck.com](https://hookdeck.com) for the Event Gateway
+5. **Hookdeck CLI** - Install globally with `npm install -g @hookdeck/cli`
+6. **Ably Account** - [Sign up at ably.com](https://ably.com)
+
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# Shopify App Credentials
+SHOPIFY_API_KEY=your_shopify_api_key
+SHOPIFY_API_SECRET=your_shopify_api_secret
+
+# Hookdeck Configuration
+HOOKDECK_API_KEY=your_hookdeck_api_key
+
+# Ably Configuration
+ABLY_API_KEY=your_ably_api_key
+
+# Database
+DATABASE_URL=file:./dev.sqlite
+```
+
+### Getting Your API Keys
+
+**Hookdeck API Key:**
+
+1. Log in to your [Hookdeck Dashboard](https://dashboard.hookdeck.com)
+2. Navigate to Settings → API Keys
+3. Create or copy your API key
+
+**Ably API Key:**
+
+1. Log in to your [Ably Dashboard](https://ably.com/dashboard)
+2. Navigate to your app → API Keys
+3. Create a new key or use the default root key
+4. Copy the full API key (format: `appId.keyId:keySecret`)
+
+**Shopify Credentials:**
+
+- Created automatically when you run `npm run dev` for the first time
+- Or manually create an app in your Partner Dashboard
+
+## Setup Instructions
+
+### 1. Clone and Install
+
+```bash
+git clone <repository-url>
+cd live-notifications
 npm install
 ```
 
-Using pnpm:
+### 2. Install and Configure Hookdeck CLI
 
-```shell
-pnpm install
-```
+The Hookdeck CLI is required for this demo application to receive webhooks locally and will be used by the setup script.
 
-### Local Development
+1. **Install Hookdeck CLI globally:**
 
-Using yarn:
+   ```bash
+   npm install -g @hookdeck/cli
+   ```
 
-```shell
-yarn dev
-```
+2. **Login to Hookdeck:**
 
-Using npm:
+   ```bash
+   hookdeck login
+   ```
 
-```shell
+   This authenticates the CLI with your Hookdeck account.
+
+### 3. Configure Shopify App
+
+```bash
 npm run dev
 ```
 
-Using pnpm:
+This will:
 
-```shell
-pnpm run dev
+- Create a tunnel for local development (using Cloudflare)
+- Prompt you to create/select a Shopify app
+- Install the app on your development store
+- Start the development server
+
+**Note on Tunneling:**
+
+- The Cloudflare tunnel created by `npm run dev` is **required** for Shopify to communicate with your local app (OAuth, app embeds, admin interface)
+- The Hookdeck CLI is used to receive webhooks locally and provides better debugging capabilities
+- Both run simultaneously: Cloudflare tunnel for the app, Hookdeck CLI for webhooks
+
+**Benefits of Hookdeck CLI for webhooks:**
+
+- Real-time webhook inspection and debugging
+- Replay webhooks during development
+- Test different payloads easily
+- View webhook history and errors
+- No need to trigger real Shopify events repeatedly
+
+### 4. Start Hookdeck CLI for Local Webhook Development
+
+Start the Hookdeck CLI to forward webhooks to your local server:
+
+```bash
+hookdeck listen 3000 shopify-webhooks
 ```
 
-Press P to open the URL to your app. Once you click install, you can start development.
+This creates a webhook URL that forwards to `localhost:3000`. Keep this terminal running.
 
-Local development is powered by [the Shopify CLI](https://shopify.dev/docs/apps/tools/cli). It logs into your partners account, connects to an app, provides environment variables, updates remote config, creates a tunnel and provides commands to generate extensions.
+**Note:** The setup script (to be created) will use the Hookdeck CLI to create Event Gateway connections.
 
-### Authenticating and querying data
+### 5. Configure Event Gateway Connections
 
-To authenticate and query data you can use the `shopify` const that is exported from `/app/shopify.server.js`:
+**Important:** Event Gateway connections should be set up statically using a setup script, not dynamically created during app install/uninstall (as Shopify app install/uninstall callbacks can be unreliable).
 
-```js
-export async function loader({ request }) {
-  const { admin } = await shopify.authenticate.admin(request);
+Create connections in the Event Gateway for each shop:
 
-  const response = await admin.graphql(`
-    {
-      products(first: 25) {
-        nodes {
-          title
-          description
-        }
-      }
-    }`);
+- **Source**: Receives webhooks from Shopify
+  - Name: `{shopId}_order-created`
+  - URL: Will be the webhook endpoint from Shopify
+- **Destination**: Forwards to Ably REST API
+  - Name: `{shopId}_ably`
+  - URL: `https://rest.ably.io/channels/{shopId}/messages`
+  - Auth Method: Bearer token with your Ably API key
 
-  const {
-    data: {
-      products: { nodes },
-    },
-  } = await response.json();
+**TODO:** Create a setup script (using Hookdeck CLI) to automate Event Gateway connection creation.
 
-  return json(nodes);
-}
+### 6. Enable the Theme Extension
+
+1. Go to your Shopify admin → Online Store → Themes
+2. Click "Customize" on your active theme
+3. Navigate to any page in the theme editor
+4. Click "Add section" or "Add block"
+5. Look for "Festive Notifications" under App blocks
+6. Add it to your theme (typically in the theme layout or header)
+7. Save and publish
+
+### 7. Update Ably API Key in Extension
+
+Edit [`extensions/live-notifications/assets/notifications.js`](extensions/live-notifications/assets/notifications.js) and replace the hardcoded API key on line 45 with your Ably API key:
+
+```javascript
+const ably = new Ably.Realtime("YOUR_ABLY_API_KEY");
 ```
 
-This template comes preconfigured with examples of:
+**Note:** In production, this should be handled more securely, potentially using token authentication.
 
-1. Setting up your Shopify app in [/app/shopify.server.ts](https://github.com/Shopify/shopify-app-template-remix/blob/main/app/shopify.server.ts)
-2. Querying data using Graphql. Please see: [/app/routes/app.\_index.tsx](https://github.com/Shopify/shopify-app-template-remix/blob/main/app/routes/app._index.tsx).
-3. Responding to mandatory webhooks in [/app/routes/webhooks.tsx](https://github.com/Shopify/shopify-app-template-remix/blob/main/app/routes/webhooks.tsx)
+### 8. Test the Integration
 
-Please read the [documentation for @shopify/shopify-app-remix](https://www.npmjs.com/package/@shopify/shopify-app-remix#authenticating-admin-requests) to understand what other API's are available.
+**TODO:** Add detailed testing instructions including:
 
-## Deployment
+- Step-by-step guide to creating a test order
+- How to verify webhook delivery in app logs (with expected log output)
+- How to check Event Gateway dashboard for event processing
+- How to open storefront and verify notification appears
+- Troubleshooting common issues
 
-### Application Storage
+## How It Works
 
-This template uses [Prisma](https://www.prisma.io/) to store session data, by default using an [SQLite](https://www.sqlite.org/index.html) database.
-The database is defined as a Prisma schema in `prisma/schema.prisma`.
+### Webhook Flow
 
-This use of SQLite works in production if your app runs as a single instance.
-The database that works best for you depends on the data your app needs and how it is queried.
-You can run your database of choice on a server yourself or host it with a SaaS company.
-Here’s a short list of databases providers that provide a free tier to get started:
+1. **Shopify triggers webhook**: When an order is created, Shopify sends an `orders/create` webhook to the Event Gateway Source
+2. **Event Gateway receives and queues**: The Event Gateway reliably receives and queues the webhook with automatic retries
+3. **App processes webhook**: The Event Gateway delivers the webhook to [`webhooks.orders.create.tsx`](app/routes/webhooks.orders.create.tsx), which processes the event
+4. **Event publication**: The app publishes the processed event back to the Event Gateway queue (intended functionality - may not be fully implemented yet)
 
-| Database   | Type             | Hosters                                                                                                                                                                                                                               |
-| ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MySQL      | SQL              | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-mysql), [Planet Scale](https://planetscale.com/), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/mysql) |
-| PostgreSQL | SQL              | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-postgresql), [Amazon Aurora](https://aws.amazon.com/rds/aurora/), [Google Cloud SQL](https://cloud.google.com/sql/docs/postgres)                                   |
-| Redis      | Key-value        | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-redis), [Amazon MemoryDB](https://aws.amazon.com/memorydb/)                                                                                                        |
-| MongoDB    | NoSQL / Document | [Digital Ocean](https://www.digitalocean.com/try/managed-databases-mongodb), [MongoDB Atlas](https://www.mongodb.com/atlas/database)                                                                                                  |
+### Real-time Delivery
 
-To use one of these, you can use a different [datasource provider](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#datasource) in your `schema.prisma` file, or a different [SessionStorage adapter package](https://github.com/Shopify/shopify-api-js/blob/main/packages/shopify-api/docs/guides/session-storage.md).
+1. **Event Gateway forwarding**: The Event Gateway queues and forwards the event to Ably's REST API
+2. **Pub/Sub broadcast**: Ably broadcasts the event to all subscribed clients
+3. **Storefront receives**: The JavaScript in [`notifications.js`](extensions/live-notifications/assets/notifications.js) receives the event via Ably Realtime
+4. **UI update**: The notification is displayed with festive animations
 
-### Build
+### Theme Extension
 
-Remix handles building the app for you, by running the command below with the package manager of your choice:
+The Shopify theme app extension consists of:
 
-Using yarn:
+- **Liquid template**: Defines the HTML structure and holiday light animations
+- **JavaScript**: Handles Ably connection, event subscriptions, and snowflake animations
+- **CSS**: Compiled from SCSS, provides styling for animations and layout
 
-```shell
-yarn build
+## Development
+
+### Running the App
+
+```bash
+npm run dev
 ```
 
-Using npm:
+This starts:
 
-```shell
+- Remix development server
+- Shopify CLI tunnel
+- SASS compiler for extension styles
+
+### Building for Production
+
+```bash
 npm run build
 ```
 
-Using pnpm:
+### Deploying
 
-```shell
-pnpm run build
-```
-
-## Hosting
-
-When you're ready to set up your app in production, you can follow [our deployment documentation](https://shopify.dev/docs/apps/deployment/web) to host your app on a cloud provider like [Heroku](https://www.heroku.com/) or [Fly.io](https://fly.io/).
-
-When you reach the step for [setting up environment variables](https://shopify.dev/docs/apps/deployment/web#set-env-vars), you also need to set the variable `NODE_ENV=production`.
-
-### Hosting on Vercel
-
-Using the Vercel Preset is recommended when hosting your Shopify Remix app on Vercel. You'll also want to ensure imports that would normally come from `@remix-run/node` are imported from `@vercel/remix` instead. Learn more about hosting Remix apps on Vercel [here](https://vercel.com/docs/frameworks/remix).
-
-```diff
-// vite.config.ts
-import { vitePlugin as remix } from "@remix-run/dev";
-import { defineConfig, type UserConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
-+ import { vercelPreset } from '@vercel/remix/vite';
-
-installGlobals();
-
-export default defineConfig({
-  plugins: [
-    remix({
-      ignoredRouteFiles: ["**/.*"],
-+     presets: [vercelPreset()],
-    }),
-    tsconfigPaths(),
-  ],
-});
-```
-
-## Gotchas / Troubleshooting
-
-### Database tables don't exist
-
-If you get this error:
-
-```
-The table `main.Session` does not exist in the current database.
-```
-
-You need to create the database for Prisma. Run the `setup` script in `package.json` using your preferred package manager.
-
-### Navigating/redirecting breaks an embedded app
-
-Embedded Shopify apps must maintain the user session, which can be tricky inside an iFrame. To avoid issues:
-
-1. Use `Link` from `@remix-run/react` or `@shopify/polaris`. Do not use `<a>`.
-2. Use the `redirect` helper returned from `authenticate.admin`. Do not use `redirect` from `@remix-run/node`
-3. Use `useSubmit` or `<Form/>` from `@remix-run/react`. Do not use a lowercase `<form/>`.
-
-This only applies if you app is embedded, which it will be by default.
-
-### Non Embedded
-
-Shopify apps are best when they are embedded into the Shopify Admin. This template is configured that way. If you have a reason to not embed your please make 2 changes:
-
-1. Change the `isEmbeddedApp` prop to false for the `AppProvider` in `/app/routes/app.jsx`
-2. Remove any use of App Bridge APIs (`window.shopify`) from your code
-3. Update the config for shopifyApp in `app/shopify.server.js`. Pass `isEmbeddedApp: false`
-
-### OAuth goes into a loop when I change my app's scopes
-
-If you change your app's scopes and authentication goes into a loop and fails with a message from Shopify that it tried too many times, you might have forgotten to update your scopes with Shopify.
-To do that, you can run the `deploy` CLI command.
-
-Using yarn:
-
-```shell
-yarn deploy
-```
-
-Using npm:
-
-```shell
+```bash
 npm run deploy
 ```
 
-Using pnpm:
+This deploys your app extensions to Shopify.
 
-```shell
-pnpm run deploy
+## Project Structure
+
+```
+live-notifications/
+├── app/
+│   ├── routes/
+│   │   ├── webhooks.orders.create.tsx    # Order webhook handler
+│   │   ├── app._index.tsx                 # App home page
+│   │   └── ...
+│   ├── helpers/
+│   │   └── webhooks.ts                    # Hookdeck/webhook utilities
+│   └── shopify.server.ts                  # Shopify app configuration
+├── extensions/
+│   └── live-notifications/
+│       ├── blocks/
+│       │   └── notifications.liquid       # Theme block template
+│       ├── assets/
+│       │   ├── notifications.js           # Client-side logic
+│       │   └── notifications.css          # Compiled styles
+│       └── src/
+│           └── notifications.scss         # Source styles
+├── prisma/
+│   └── schema.prisma                      # Database schema
+├── shopify.app.toml                       # App configuration
+└── package.json                           # Dependencies
 ```
 
-### My shop-specific webhook subscriptions aren't updated
+## Technologies Used
 
-If you are registering webhooks in the `afterAuth` hook, using `shopify.registerWebhooks`, you may find that your subscriptions aren't being updated.  
+- **[Remix](https://remix.run/)** - Full-stack web framework
+- **[Shopify App Remix](https://shopify.dev/docs/api/shopify-app-remix)** - Shopify app framework for Remix
+- **[Hookdeck Event Gateway](https://hookdeck.com)** - Webhook infrastructure for reliable delivery and event routing
+- **[Ably](https://ably.com)** - Real-time pub/sub messaging platform
+- **[Prisma](https://www.prisma.io/)** - Database ORM
+- **[Shopify Theme App Extensions](https://shopify.dev/docs/apps/online-store/theme-app-extensions)** - Storefront integration
 
-Instead of using the `afterAuth` hook, the recommended approach is to declare app-specific webhooks in the `shopify.app.toml` file.  This approach is easier since Shopify will automatically update changes to webhook subscriptions every time you run `deploy` (e.g: `npm run deploy`).  Please read these guides to understand more:
+## Official Documentation
 
-1. [app-specific vs shop-specific webhooks](https://shopify.dev/docs/apps/build/webhooks/subscribe#app-specific-subscriptions)
-2. [Create a subscription tutorial](https://shopify.dev/docs/apps/build/webhooks/subscribe/get-started?framework=remix&deliveryMethod=https)
+- [Shopify App Development](https://shopify.dev/docs/apps)
+- [Shopify Webhooks](https://shopify.dev/docs/apps/build/webhooks)
+- [Shopify Theme App Extensions](https://shopify.dev/docs/apps/online-store/theme-app-extensions)
+- [Shopify Admin GraphQL API](https://shopify.dev/docs/api/admin-graphql)
+- [Hookdeck Event Gateway Documentation](https://hookdeck.com/docs)
+- [Ably Documentation](https://ably.com/docs)
+- [Remix Documentation](https://remix.run/docs)
 
-If you do need shop-specific webhooks, please keep in mind that the package calls `afterAuth` in 2 scenarios:
+## Learning Resources
 
-- After installing the app
-- When an access token expires
+- [Shopify App Tutorial](https://shopify.dev/docs/apps/getting-started)
+- [Webhooks Best Practices](https://shopify.dev/docs/apps/build/webhooks/best-practices)
+- [Theme App Extension Tutorial](https://shopify.dev/docs/apps/online-store/theme-app-extensions/getting-started)
+- [Hookdeck Event Gateway Guide](https://hookdeck.com/webhooks)
+- [Ably Realtime Guide](https://ably.com/docs/realtime)
 
-During normal development, the app won't need to re-authenticate most of the time, so shop-specific subscriptions aren't updated. To force your app to update the subscriptions, you can uninstall and reinstall it in your development store. That will force the OAuth process and call the `afterAuth` hook.
+## Limitations & Considerations
 
-### Admin created webhook failing HMAC validation
+- **Security**: The Ably API key is currently hardcoded in the client-side JavaScript. For production, implement token authentication
+- **Error Handling**: Basic error handling is implemented; production apps should include comprehensive error handling and monitoring
+- **Scalability**: This demo uses a simple SQLite database; production apps should use PostgreSQL or MySQL
+- **Shop-specific channels**: The current implementation creates shop-specific Ably channels to isolate events between stores
 
-Webhooks subscriptions created in the [Shopify admin](https://help.shopify.com/en/manual/orders/notifications/webhooks) will fail HMAC validation. This is because the webhook payload is not signed with your app's secret key.  There are 2 solutions:
+## License
 
-1. Use [app-specific webhooks](https://shopify.dev/docs/apps/build/webhooks/subscribe#app-specific-subscriptions) defined in your toml file instead (recommended)
-2. Create [webhook subscriptions](https://shopify.dev/docs/api/shopify-app-remix/v1/guide-webhooks) using the `shopifyApp` object.
+This is a demonstration/tutorial project for educational purposes.
 
-Test your webhooks with the [Shopify CLI](https://shopify.dev/docs/apps/tools/cli/commands#webhook-trigger) or by triggering events manually in the Shopify admin(e.g. Updating the product title to trigger a `PRODUCTS_UPDATE`).
+## Author
 
-### Incorrect GraphQL Hints
+leggetter
 
-By default the [graphql.vscode-graphql](https://marketplace.visualstudio.com/items?itemName=GraphQL.vscode-graphql) extension for VS Code will assume that GraphQL queries or mutations are for the [Shopify Admin API](https://shopify.dev/docs/api/admin). This is a sensible default, but it may not be true if:
+---
 
-1. You use another Shopify API such as the storefront API.
-2. You use a third party GraphQL API.
-
-in this situation, please update the [.graphqlrc.ts](https://github.com/Shopify/shopify-app-template-remix/blob/main/.graphqlrc.ts) config.
-
-### First parameter has member 'readable' that is not a ReadableStream.
-
-See [hosting on Vercel](#hosting-on-vercel).
-
-### Admin object undefined on webhook events triggered by the CLI
-
-When you trigger a webhook event using the Shopify CLI, the `admin` object will be `undefined`. This is because the CLI triggers an event with a valid, but non-existent, shop. The `admin` object is only available when the webhook is triggered by a shop that has installed the app.
-
-Webhooks triggered by the CLI are intended for initial experimentation testing of your webhook configuration. For more information on how to test your webhooks, see the [Shopify CLI documentation](https://shopify.dev/docs/apps/tools/cli/commands#webhook-trigger).
-
-### Using Defer & await for streaming responses
-
-To test [streaming using defer/await](https://remix.run/docs/en/main/guides/streaming) during local development you'll need to use the Shopify CLI slightly differently:
-
-1. First setup ngrok: https://ngrok.com/product/secure-tunnels
-2. Create an ngrok tunnel on port 8080: `ngrok http 8080`.
-3. Copy the forwarding address. This should be something like: `https://f355-2607-fea8-bb5c-8700-7972-d2b5-3f2b-94ab.ngrok-free.app`
-4. In a separate terminal run `yarn shopify app dev --tunnel-url=TUNNEL_URL:8080` replacing `TUNNEL_URL` for the address you copied in step 3.
-
-By default the CLI uses a cloudflare tunnel. Unfortunately it cloudflare tunnels wait for the Response stream to finish, then sends one chunk.
-
-This will not affect production, since tunnels are only for local development.
-
-### Using MongoDB and Prisma
-
-By default this template uses SQLlite as the database. It is recommended to move to a persisted database for production. If you choose to use MongoDB, you will need to make some modifications to the schema and prisma configuration. For more information please see the [Prisma MongoDB documentation](https://www.prisma.io/docs/orm/overview/databases/mongodb).
-
-Alternatively you can use a MongDB database directly with the [MongoDB session storage adapter](https://github.com/Shopify/shopify-app-js/tree/main/packages/apps/session-storage/shopify-app-session-storage-mongodb).
-
-#### Mapping the id field
-
-In MongoDB, an ID must be a single field that defines an @id attribute and a @map("\_id") attribute.
-The prisma adapter expects the ID field to be the ID of the session, and not the \_id field of the document.
-
-To make this work you can add a new field to the schema that maps the \_id field to the id field. For more information see the [Prisma documentation](https://www.prisma.io/docs/orm/prisma-schema/data-model/models#defining-an-id-field)
-
-```prisma
-model Session {
-  session_id  String    @id @default(auto()) @map("_id") @db.ObjectId
-  id          String    @unique
-...
-}
-```
-
-#### Error: The "mongodb" provider is not supported with this command
-
-MongoDB does not support the [prisma migrate](https://www.prisma.io/docs/orm/prisma-migrate/understanding-prisma-migrate/overview) command. Instead, you can use the [prisma db push](https://www.prisma.io/docs/orm/reference/prisma-cli-reference#db-push) command and update the `shopify.web.toml` file with the following commands. If you are using MongoDB please see the [Prisma documentation](https://www.prisma.io/docs/orm/overview/databases/mongodb) for more information.
-
-```toml
-[commands]
-predev = "npx prisma generate && npx prisma db push"
-dev = "npm exec remix vite:dev"
-```
-
-#### Prisma needs to perform transactions, which requires your mongodb server to be run as a replica set
-
-See the [Prisma documentation](https://www.prisma.io/docs/getting-started/setup-prisma/start-from-scratch/mongodb/connect-your-database-node-mongodb) for connecting to a MongoDB database.
-
-### I want to use Polaris v13.0.0 or higher
-
-Currently, this template is set up to work on node v18.20 or higher. However, `@shopify/polaris` is limited to v12 because v13 can only run on node v20+.
-
-You don't have to make any changes to the code in order to be able to upgrade Polaris to v13, but you'll need to do the following:
-
-- Upgrade your node version to v20.10 or higher.
-- Update your `Dockerfile` to pull `FROM node:20-alpine` instead of `node:18-alpine`
-
-## Benefits
-
-Shopify apps are built on a variety of Shopify tools to create a great merchant experience.
-
-<!-- TODO: Uncomment this after we've updated the docs -->
-<!-- The [create an app](https://shopify.dev/docs/apps/getting-started/create) tutorial in our developer documentation will guide you through creating a Shopify app using this template. -->
-
-The Remix app template comes with the following out-of-the-box functionality:
-
-- [OAuth](https://github.com/Shopify/shopify-app-js/tree/main/packages/shopify-app-remix#authenticating-admin-requests): Installing the app and granting permissions
-- [GraphQL Admin API](https://github.com/Shopify/shopify-app-js/tree/main/packages/shopify-app-remix#using-the-shopify-admin-graphql-api): Querying or mutating Shopify admin data
-- [REST Admin API](https://github.com/Shopify/shopify-app-js/tree/main/packages/shopify-app-remix#using-the-shopify-admin-rest-api): Resource classes to interact with the API
-- [Webhooks](https://github.com/Shopify/shopify-app-js/tree/main/packages/shopify-app-remix#authenticating-webhook-requests): Callbacks sent by Shopify when certain events occur
-- [AppBridge](https://shopify.dev/docs/api/app-bridge): This template uses the next generation of the Shopify App Bridge library which works in unison with previous versions.
-- [Polaris](https://polaris.shopify.com/): Design system that enables apps to create Shopify-like experiences
-
-## Tech Stack
-
-This template uses [Remix](https://remix.run). The following Shopify tools are also included to ease app development:
-
-- [Shopify App Remix](https://shopify.dev/docs/api/shopify-app-remix) provides authentication and methods for interacting with Shopify APIs.
-- [Shopify App Bridge](https://shopify.dev/docs/apps/tools/app-bridge) allows your app to seamlessly integrate your app within Shopify's Admin.
-- [Polaris React](https://polaris.shopify.com/) is a powerful design system and component library that helps developers build high quality, consistent experiences for Shopify merchants.
-- [Webhooks](https://github.com/Shopify/shopify-app-js/tree/main/packages/shopify-app-remix#authenticating-webhook-requests): Callbacks sent by Shopify when certain events occur
-- [Polaris](https://polaris.shopify.com/): Design system that enables apps to create Shopify-like experiences
-
-## Resources
-
-- [Remix Docs](https://remix.run/docs/en/v1)
-- [Shopify App Remix](https://shopify.dev/docs/api/shopify-app-remix)
-- [Introduction to Shopify apps](https://shopify.dev/docs/apps/getting-started)
-- [App authentication](https://shopify.dev/docs/apps/auth)
-- [Shopify CLI](https://shopify.dev/docs/apps/tools/cli)
-- [App extensions](https://shopify.dev/docs/apps/app-extensions/list)
-- [Shopify Functions](https://shopify.dev/docs/api/functions)
-- [Getting started with internationalizing your app](https://shopify.dev/docs/apps/best-practices/internationalization/getting-started)
+**Questions or Issues?** This is a tutorial app - refer to the official documentation links above for detailed guidance on each technology used.
