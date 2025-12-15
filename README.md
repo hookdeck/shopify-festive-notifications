@@ -136,8 +136,8 @@ DATABASE_URL=file:./dev.sqlite
 ### 1. Clone and Install
 
 ```bash
-git clone <repository-url>
-cd live-notifications
+git clone https://github.com/hookdeck/shopify-festive-notifications.git
+cd shopify-festive-notifications
 npm install
 ```
 
