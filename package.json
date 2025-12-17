@@ -12,6 +12,8 @@
     "start": "remix-serve ./build/server/index.js",
     "docker-start": "npm run setup && npm run start",
     "setup": "prisma generate && prisma migrate deploy",
+    "setup:hookdeck": "tsx scripts/setup-hookdeck.ts",
+    "hookdeck:listen": "hookdeck listen 3000 shopify-webhooks",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
     "shopify": "shopify",
     "prisma": "prisma",
@@ -41,16 +43,19 @@
     "vite-tsconfig-paths": "^5.0.1"
   },
   "devDependencies": {
+    "@iarna/toml": "^2.2.5",
     "@remix-run/eslint-config": "^2.7.1",
     "@shopify/api-codegen-preset": "^1.1.1",
     "@types/eslint": "^8.40.0",
     "@types/node": "^22.2.0",
     "@types/react": "^18.2.31",
     "@types/react-dom": "^18.2.14",
+    "dotenv": "^17.2.3",
     "eslint": "^8.42.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.2.4",
     "sass": "^1.82.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.2.2",
     "vite": "^5.1.3"
   },
