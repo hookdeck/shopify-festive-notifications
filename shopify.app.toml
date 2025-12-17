@@ -15,7 +15,7 @@ api_version = "2024-10"
 
   [[webhooks.subscriptions]]
   topics = [ "orders/create" ]
-  uri = "/webhooks/orders/create"
+  uri = "https://hkdk.events/6cfj6dcwh23btf"
 
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
