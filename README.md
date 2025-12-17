@@ -16,7 +16,17 @@ This is an example/tutorial app that shows developers how to:
 
 ## Architecture Overview
 
-The complete data flow works as follows:
+The application uses two Hookdeck Event Gateway connections for reliable webhook processing and real-time delivery:
+
+**Connection 1: Shopify → Event Gateway → App**
+
+- Receives Shopify webhooks reliably
+- Queues and delivers to app with retries
+
+**Connection 2: App → Event Gateway Publish API → Ably**
+
+- Publishes PII-free notifications to Event Gateway
+- Event Gateway forwards to Ably for real-time broadcast
 
 ```
 1. Order Created in Shopify
@@ -28,8 +38,8 @@ The complete data flow works as follows:
 4. Event Gateway delivers webhook to app webhook handler
    (app/routes/webhooks.orders.create.tsx)
    ↓
-5. App processes event and publishes to Event Gateway queue
-   (app/helpers/webhooks.ts)
+5. App transforms order to PII-free notification and publishes to Event Gateway
+   (app/helpers/hookdeck-publisher.ts)
    ↓
 6. Event Gateway queues and forwards event to Ably via REST API
    ↓
@@ -53,11 +63,12 @@ This project contains both a **Shopify app** and a **theme app extension**:
 
 ### Backend (Remix App)
 
-- **[`app/routes/webhooks.orders.create.tsx`](app/routes/webhooks.orders.create.tsx)** - Webhook endpoint that receives order creation events from Shopify via the Event Gateway
-- **[`app/helpers/webhooks.ts`](app/helpers/webhooks.ts)** - Helper functions for managing webhooks, including:
-  - Publishing events to the Event Gateway queue
-  - Managing webhook subscriptions via Shopify Admin GraphQL API
-  - **Note:** Connection setup should be handled by a setup script (see Setup Instructions)
+- **[`app/routes/webhooks.orders.create.tsx`](app/routes/webhooks.orders.create.tsx)** - Webhook endpoint that receives order creation events from Shopify via the Event Gateway and publishes PII-free notifications
+- **[`app/helpers/hookdeck-publisher.ts`](app/helpers/hookdeck-publisher.ts)** - Helper functions for publishing events to the Event Gateway, including:
+  - Transforming orders to PII-free notifications (removes customer data)
+  - Fetching product images from Shopify
+  - Publishing to the Event Gateway's Publish API with shop-specific routing
+- **[`scripts/setup-hookdeck.ts`](scripts/setup-hookdeck.ts)** - Automated setup script that creates both Event Gateway connections
 
 ### Storefront Extension
 
@@ -79,7 +90,6 @@ This project contains both a **Shopify app** and a **theme app extension**:
 - **[`package.json`](package.json)** - Dependencies including:
   - `@shopify/shopify-app-remix` - Shopify app framework
   - Ably client library (loaded via CDN in storefront)
-  - **Note:** The `@hookdeck/sdk` dependency is deprecated and should be removed
 
 ## Prerequisites
 
@@ -88,45 +98,79 @@ Before setting up this app, you'll need:
 1. **Node.js** (v18.20+, v20.10+, or v21.0.0+)
 2. **Shopify Partner Account** - [Create one here](https://partners.shopify.com/)
 3. **Shopify Development Store** - Create from your Partner Dashboard
-4. **Hookdeck Account** - [Sign up at hookdeck.com](https://hookdeck.com) for the Event Gateway
+4. **Hookdeck Account** - [Sign up at hookdeck.com](https://dashboard.hookdeck.com/signup) for the Event Gateway
 5. **Hookdeck CLI** - Install globally with `npm install -g @hookdeck/cli`
 6. **Ably Account** - [Sign up at ably.com](https://ably.com)
+
+## Getting Your API Keys
+
+### Hookdeck API Key
+
+1. Log in to your [Hookdeck Dashboard](https://dashboard.hookdeck.com)
+2. Navigate to Settings → API Keys
+3. Create or copy your API key
+
+### Ably API Keys
+
+You'll need **two separate Ably API keys** with different permissions:
+
+**1. Publishing API Key (used in Event Gateway)**
+
+This key is used by the Event Gateway to forward events to Ably and must have **publish permissions only**.
+
+1. Log in to your [Ably Dashboard](https://ably.com/dashboard)
+2. Navigate to your app → API Keys
+3. Click "Create new API key"
+4. Name it "Event Gateway Publisher"
+5. Under Capabilities, select **only** "Publish"
+6. Copy the full API key (format: `appId.keyId:keySecret`)
+7. Save this key - you'll use it in your `.env` file
+
+**2. Subscribe API Key (for Storefront)**
+
+This key is used by the storefront extension to receive notifications and must have **subscribe permissions only**.
+
+1. In the Ably Dashboard, create another API key
+2. Name it "Storefront Subscriber"
+3. Under Capabilities, select **only** "Subscribe"
+4. Copy this API key
+5. Save this key - you'll use it in the extension JavaScript file
+
+Learn more about [Ably API key permissions](https://ably.com/docs/auth/capabilities).
+
+### Shopify Credentials
+
+The Shopify CLI will automatically configure your app when you run `npm run dev` for the first time:
+
+1. The CLI prompts you to create a new app or select an existing one
+2. The `SHOPIFY_API_KEY` (client_id) is automatically saved to [`shopify.app.toml`](shopify.app.toml)
+3. You need to manually add `SHOPIFY_API_SECRET` to your `.env` file
+
+**To get your `SHOPIFY_API_SECRET`:**
+
+1. Go to your [Shopify Partner Dashboard](https://partners.shopify.com/organizations)
+2. Navigate to Apps → [Your App]
+3. Go to the Configuration tab
+4. Copy the "Client secret" value
+5. Add it to your `.env` file as `SHOPIFY_API_SECRET`
+
+This secret is required for webhook signature verification by the Event Gateway.
 
 ## Environment Variables
 
 Create a `.env` file in the root directory with the following variables:
 
 ```env
-# Shopify App Credentials
+# Shopify App Credentials (automatically generated by CLI on first run)
 SHOPIFY_API_KEY=your_shopify_api_key
 SHOPIFY_API_SECRET=your_shopify_api_secret
 
 # Hookdeck Configuration
 HOOKDECK_API_KEY=your_hookdeck_api_key
 
-# Ably Configuration
-ABLY_API_KEY=your_ably_api_key
+# Ably Configuration (use the publishing key)
+ABLY_API_KEY=your_ably_publishing_api_key
 ```
-
-### Getting Your API Keys
-
-**Hookdeck API Key:**
-
-1. Log in to your [Hookdeck Dashboard](https://dashboard.hookdeck.com)
-2. Navigate to Settings → API Keys
-3. Create or copy your API key
-
-**Ably API Key:**
-
-1. Log in to your [Ably Dashboard](https://ably.com/dashboard)
-2. Navigate to your app → API Keys
-3. Create a new key or use the default root key
-4. Copy the full API key (format: `appId.keyId:keySecret`)
-
-**Shopify Credentials:**
-
-- Created automatically when you run `npm run dev` for the first time
-- Or manually create an app in your Partner Dashboard
 
 ## Setup Instructions
 
@@ -138,9 +182,21 @@ cd shopify-festive-notifications
 npm install
 ```
 
-### 2. Install and Configure Hookdeck CLI
+### 2. Configure Ably API Key in Extension
 
-The Hookdeck CLI is required for this demo application to receive webhooks locally and will be used by the setup script.
+Edit [`extensions/live-notifications/assets/notifications.js`](extensions/live-notifications/assets/notifications.js) and replace the placeholder API key with your **Ably Subscribe API key**:
+
+```javascript
+const ably = new Ably.Realtime("YOUR_ABLY_SUBSCRIBE_API_KEY");
+```
+
+**Important:** Use the subscribe-only API key here, not the publishing key from your `.env` file.
+
+**Note:** In production, this should be handled more securely using token authentication.
+
+### 3. Install and Configure Hookdeck CLI
+
+The Hookdeck CLI is required for this demo application to receive webhooks locally.
 
 1. **Install Hookdeck CLI globally:**
 
@@ -156,7 +212,7 @@ The Hookdeck CLI is required for this demo application to receive webhooks local
 
    This authenticates the CLI with your Hookdeck account.
 
-### 3. Configure Shopify App
+### 4. Configure Shopify App
 
 ```bash
 npm run dev
@@ -183,7 +239,34 @@ This will:
 - View webhook history and errors
 - No need to trigger real Shopify events repeatedly
 
-### 4. Start Hookdeck CLI for Local Webhook Development
+### 5. Configure Event Gateway Connections
+
+Run the automated setup script to create both Event Gateway connections:
+
+```bash
+npm run setup:hookdeck
+```
+
+This script automatically creates:
+
+1. **Connection 1: Shopify → App**
+
+   - Source: `shopify-webhooks` (for receiving webhooks from Shopify)
+   - Destination: Points to your app's webhook handler
+   - CLI Connection: For local development
+   - **Webhook Signing**: Automatically configured using your `SHOPIFY_API_SECRET` to verify webhook authenticity
+
+2. **Connection 2: App → Ably**
+   - Source: `shopify-notifications-publish` (for publishing from your app)
+   - Destination: `ably-rest-api` (forwards to Ably REST API)
+   - Authentication: Uses your Ably publishing API key from `.env`
+   - Routing: Shop-specific channels for multi-tenant support
+
+The script uses your `ABLY_API_KEY` and `SHOPIFY_API_SECRET` from `.env` to configure connections automatically.
+
+**Note:** For production deployments, you'll need to update the destination URL in Connection 1 to point to your production server instead of localhost.
+
+### 6. Start Hookdeck CLI for Local Webhook Development
 
 Start the Hookdeck CLI to forward webhooks to your local server:
 
@@ -198,25 +281,9 @@ npm run hookdeck:listen
 > hookdeck listen 3000 shopify-webhooks
 > ```
 
-This creates or reuses a Hookdeck Connection that forwards events from a `shopify-webhooks` Source to `localhost:3000`. Keep this terminal running.
+This creates or reuses an Event Gateway Connection that forwards events from a `shopify-webhooks` Source to `localhost:3000`. Keep this terminal running.
 
-### 5. Configure Event Gateway Connections
-
-**Important:** Event Gateway connections should be set up statically using a setup script, not dynamically created during app install/uninstall (as Shopify app install/uninstall callbacks can be unreliable).
-
-Create connections in the Event Gateway for each shop:
-
-- **Source**: Receives webhooks from Shopify
-  - Name: `{shopId}_order-created`
-  - URL: Will be the webhook endpoint from Shopify
-- **Destination**: Forwards to Ably REST API
-  - Name: `{shopId}_ably`
-  - URL: `https://rest.ably.io/channels/{shopId}/messages`
-  - Auth Method: Bearer token with your Ably API key
-
-**TODO:** Create a setup script (using Hookdeck CLI) to automate Event Gateway connection creation.
-
-### 6. Enable the Theme Extension
+### 7. Enable the Theme Extension
 
 1. Go to your Shopify admin → Online Store → Themes
 2. Click "Customize" on your active theme
@@ -226,24 +293,14 @@ Create connections in the Event Gateway for each shop:
 6. Add it to your theme (typically in the theme layout or header)
 7. Save and publish
 
-### 7. Update Ably API Key in Extension
-
-Edit [`extensions/live-notifications/assets/notifications.js`](extensions/live-notifications/assets/notifications.js) and replace the hardcoded API key on line 45 with your Ably API key:
-
-```javascript
-const ably = new Ably.Realtime("YOUR_ABLY_API_KEY");
-```
-
-**Note:** In production, this should be handled more securely, potentially using token authentication.
-
 ### 8. Test the Integration
 
-**TODO:** Add detailed testing instructions including:
+See [`docs/TESTING.md`](docs/TESTING.md) for detailed testing instructions including:
 
 - Step-by-step guide to creating a test order
-- How to verify webhook delivery in app logs (with expected log output)
-- How to check Event Gateway dashboard for event processing
-- How to open storefront and verify notification appears
+- How to verify webhook delivery in app logs
+- How to check the Event Gateway dashboard for event processing
+- How to verify notifications appear in the storefront
 - Troubleshooting common issues
 
 ## How It Works
@@ -252,15 +309,19 @@ const ably = new Ably.Realtime("YOUR_ABLY_API_KEY");
 
 1. **Shopify triggers webhook**: When an order is created, Shopify sends an `orders/create` webhook to the Event Gateway Source
 2. **Event Gateway receives and queues**: The Event Gateway reliably receives and queues the webhook with automatic retries
-3. **App processes webhook**: The Event Gateway delivers the webhook to [`webhooks.orders.create.tsx`](app/routes/webhooks.orders.create.tsx), which processes the event
-4. **Event publication**: The app publishes the processed event back to the Event Gateway queue (intended functionality - may not be fully implemented yet)
+3. **App processes webhook**: The Event Gateway delivers the webhook to [`webhooks.orders.create.tsx`](app/routes/webhooks.orders.create.tsx)
+4. **PII filtering**: The webhook handler extracts order data and uses [`hookdeck-publisher.ts`](app/helpers/hookdeck-publisher.ts) to:
+   - Remove customer PII (name, email, address)
+   - Fetch product images from Shopify
+   - Create a clean notification payload
+5. **Event publication**: The app publishes the PII-free notification to the Event Gateway's Publish API with shop-specific routing
 
 ### Real-time Delivery
 
-1. **Event Gateway forwarding**: The Event Gateway queues and forwards the event to Ably's REST API
-2. **Pub/Sub broadcast**: Ably broadcasts the event to all subscribed clients
+1. **Event Gateway forwarding**: The Event Gateway queues and forwards the event to Ably's REST API via the configured destination
+2. **Pub/Sub broadcast**: Ably broadcasts the event to all subscribed clients on the shop-specific channel
 3. **Storefront receives**: The JavaScript in [`notifications.js`](extensions/live-notifications/assets/notifications.js) receives the event via Ably Realtime
-4. **UI update**: The notification is displayed with festive animations
+4. **UI update**: The notification is displayed with product image and festive snowflake animations
 
 ### Theme Extension
 
@@ -308,7 +369,7 @@ live-notifications/
 │   │   ├── app._index.tsx                 # App home page
 │   │   └── ...
 │   ├── helpers/
-│   │   └── webhooks.ts                    # Hookdeck/webhook utilities
+│   │   └── hookdeck-publisher.ts          # Event Gateway publishing utilities
 │   └── shopify.server.ts                  # Shopify app configuration
 ├── extensions/
 │   └── live-notifications/
@@ -319,6 +380,13 @@ live-notifications/
 │       │   └── notifications.css          # Compiled styles
 │       └── src/
 │           └── notifications.scss         # Source styles
+├── scripts/
+│   └── setup-hookdeck.ts                  # Automated connection setup
+├── plans/
+│   ├── hookdeck-ably-architecture.md      # Architecture documentation
+│   └── hookdeck-setup-architecture.md     # Setup process documentation
+├── docs/
+│   └── TESTING.md                         # Testing guide
 ├── prisma/
 │   └── schema.prisma                      # Database schema
 ├── shopify.app.toml                       # App configuration
