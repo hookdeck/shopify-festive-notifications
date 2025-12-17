@@ -106,9 +106,6 @@ HOOKDECK_API_KEY=your_hookdeck_api_key
 
 # Ably Configuration
 ABLY_API_KEY=your_ably_api_key
-
-# Database
-DATABASE_URL=file:./dev.sqlite
 ```
 
 ### Getting Your API Keys
@@ -191,12 +188,17 @@ This will:
 Start the Hookdeck CLI to forward webhooks to your local server:
 
 ```bash
-hookdeck listen 3000 shopify-webhooks
+npm run hookdeck:listen
 ```
 
-This creates a webhook URL that forwards to `localhost:3000`. Keep this terminal running.
+> [!NOTE]
+> This runs the command:
+>
+> ```bash
+> hookdeck listen 3000 shopify-webhooks
+> ```
 
-**Note:** The setup script (to be created) will use the Hookdeck CLI to create Event Gateway connections.
+This creates or reuses a Hookdeck Connection that forwards events from a `shopify-webhooks` Source to `localhost:3000`. Keep this terminal running.
 
 ### 5. Configure Event Gateway Connections
 

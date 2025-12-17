@@ -1,137 +1,30 @@
-import { useEffect, useState } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { useFetcher, useLoaderData } from "@remix-run/react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
 import {
   Page,
   Layout,
   Text,
   Card,
-  Button,
   BlockStack,
   List,
   Link,
-  InlineStack,
-  TextField,
-  Box,
 } from "@shopify/polaris";
-import { ClipboardIcon, DeleteIcon } from "@shopify/polaris-icons";
-import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
+import { TitleBar } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
-import {
-  createOrdersWebhook,
-  deleteWebhook,
-  getWebhookSubscriptions,
-} from "app/helpers/webhooks";
 
-export const loader = async ({ request, context }: LoaderFunctionArgs) => {
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   const authResult = await authenticate.admin(request);
-  const webhookSubscriptions = await getWebhookSubscriptions({
-    graphql: authResult.admin.graphql,
-  });
-
   return {
-    accessToken: authResult.session.accessToken,
-    webhookSubscriptions,
+    shop: authResult.session.shop,
   };
-};
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  console.log(request.method, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-
-  const authResult = await authenticate.admin(request);
-  const admin = authResult.admin;
-
-  let webhook = null;
-
-  if (request.method === "POST") {
-    webhook = await createOrdersWebhook({
-      graphql: admin.graphql,
-      shopDomain: authResult.session.shop,
-    });
-  } else if (request.method === "DELETE") {
-    const data = await request.formData();
-    console.log({ data });
-
-    const webhookId = data.get("webhookId");
-    console.log("DELETE", webhookId);
-    if (webhookId !== null) {
-      webhook = await deleteWebhook({
-        graphql: admin.graphql,
-        webhookId: webhookId.valueOf() as string,
-      });
-    }
-  }
-
-  const webhookSubscriptions = await getWebhookSubscriptions({
-    graphql: admin.graphql,
-  });
-
-  return { webhook, webhookSubscriptions };
 };
 
 type LoaderData = {
-  accessToken: string;
-  webhookSubscriptions: any;
+  shop: string;
 };
 
 export default function Index() {
-  const { accessToken, webhookSubscriptions } = useLoaderData<LoaderData>();
-  const fetcher = useFetcher<typeof action>({ key: "webhooks" });
-  const [mounted, setMounted] = useState(false);
-
-  let displayWebhookSubscriptions = webhookSubscriptions;
-
-  const isLoading =
-    (["loading", "submitting"].includes(fetcher.state) &&
-      fetcher.formMethod === "POST") ||
-    fetcher.formMethod === "DELETE";
-  if (fetcher.data?.webhookSubscriptions) {
-    displayWebhookSubscriptions = fetcher.data.webhookSubscriptions;
-
-    console.log("displayWebhookSubscriptions", displayWebhookSubscriptions);
-  }
-
-  const webhook = fetcher.data?.webhook;
-
-  const appBridge = useAppBridge();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-
-    // const appBridge = (window as any).shopify;
-    if (!appBridge?.toast) return;
-
-    if (webhook && fetcher.formMethod === "POST") {
-      appBridge.toast.show("Webhook created");
-    }
-    if (webhook && fetcher.formMethod === "DELETE") {
-      appBridge.toast.show("Webhook deleted");
-    }
-  }, [fetcher.formMethod, webhook, mounted, appBridge.toast]);
-
-  const copyToClipboard = (value: string) => {
-    navigator.clipboard.writeText(value);
-    const appBridge = (window as any).shopify;
-    if (appBridge?.toast) {
-      appBridge.toast.show("Copied to clipboard");
-    }
-  };
-
-  const deleteWebhookClicked = async (webhookId: string) => {
-    console.log("deleteWebhookClicked", webhookId);
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this webhook?",
-    );
-    if (!confirmed) return;
-
-    fetcher.submit({ webhookId }, { method: "DELETE" });
-  };
-
-  const setupWebhooks = () => fetcher.submit({}, { method: "POST" });
+  const { shop } = useLoaderData<LoaderData>();
 
   return (
     <Page>
@@ -141,193 +34,131 @@ export default function Index() {
           <Layout.Section>
             <Card>
               <BlockStack gap="300">
+                <Text as="h2" variant="headingLg">
+                  Welcome to Live Notifications
+                </Text>
                 <Text as="p" variant="bodyMd">
                   The Live Notifications application uses{" "}
-                  <Link url="https://hookdeck.com?ref=shopifyapp-livenotifications">
+                  <Link
+                    url="https://hookdeck.com?ref=shopifyapp-livenotifications"
+                    target="_blank"
+                  >
                     Hookdeck
                   </Link>{" "}
-                  to reliably recieve, verify, and queue Shopify Order webhooks.
+                  to reliably receive, verify, and queue Shopify Order webhooks.
                   It uses{" "}
-                  <Link url="https://ably.com?ref=shopifyapp-livenotifications">
+                  <Link
+                    url="https://ably.com?ref=shopifyapp-livenotifications"
+                    target="_blank"
+                  >
                     Ably
                   </Link>{" "}
-                  to deliver the notifications to the browser client.
+                  to deliver the notifications to the browser in real-time.
+                </Text>
+              </BlockStack>
+            </Card>
+            <Card>
+              <BlockStack gap="300">
+                <Text as="h2" variant="headingMd">
+                  Setup Instructions
+                </Text>
+                <List type="number">
+                  <List.Item>
+                    Set up your environment variables in <code>.env</code>:
+                    <List type="bullet">
+                      <List.Item>
+                        <code>HOOKDECK_API_KEY</code> - Your Hookdeck API key
+                      </List.Item>
+                      <List.Item>
+                        <code>SHOPIFY_API_SECRET</code> - Your Shopify app
+                        client secret
+                      </List.Item>
+                      <List.Item>
+                        <code>ABLY_API_KEY</code> - Your Ably API key
+                      </List.Item>
+                    </List>
+                  </List.Item>
+                  <List.Item>
+                    Run the setup script to configure Hookdeck connections:
+                    <br />
+                    <code>npm run setup-hookdeck</code>
+                  </List.Item>
+                  <List.Item>
+                    Install the live notifications theme extension on your store
+                  </List.Item>
+                  <List.Item>
+                    Test by creating an order and watching notifications appear
+                    in real-time
+                  </List.Item>
+                </List>
+              </BlockStack>
+            </Card>
+            <Card>
+              <BlockStack gap="300">
+                <Text as="h2" variant="headingMd">
+                  How It Works
+                </Text>
+                <List type="bullet">
+                  <List.Item>
+                    Shopify sends order webhooks to Hookdeck for reliable
+                    delivery
+                  </List.Item>
+                  <List.Item>
+                    Your app receives webhooks, fetches product images, and
+                    publishes notifications
+                  </List.Item>
+                  <List.Item>
+                    Hookdeck forwards notifications to Ably for real-time
+                    delivery
+                  </List.Item>
+                  <List.Item>
+                    The theme extension listens for notifications and displays
+                    them to shoppers
+                  </List.Item>
+                </List>
+              </BlockStack>
+            </Card>
+            <Card>
+              <BlockStack gap="300">
+                <Text as="h2" variant="headingMd">
+                  Current Shop
                 </Text>
                 <Text as="p" variant="bodyMd">
-                  Begin by setting up the required webhooks. Click{" "}
-                  <strong>Setup</strong> to get started.
+                  {shop}
                 </Text>
-              </BlockStack>
-            </Card>
-            <Card>
-              <BlockStack gap="500">
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Webhooks
-                  </Text>
-                  <BlockStack gap="200">
-                    <InlineStack gap="400" align="start">
-                      {displayWebhookSubscriptions.data.webhookSubscriptions.edges.map(
-                        (webhook: any) => {
-                          return (
-                            <InlineStack
-                              wrap={false}
-                              gap="500"
-                              key={webhook.node.id}
-                              align="center"
-                              blockAlign="center"
-                            >
-                              <Box>{webhook.node.topic}</Box>
-                              <Box>{webhook.node.endpoint.callbackUrl}</Box>
-                              <Box>{webhook.node.updatedAt}</Box>
-                              <Box>
-                                <Button
-                                  icon={DeleteIcon}
-                                  disabled={isLoading}
-                                  onClick={() => {
-                                    deleteWebhookClicked(webhook.node.id);
-                                  }}
-                                ></Button>
-                              </Box>
-                            </InlineStack>
-                          );
-                        },
-                      )}
-                    </InlineStack>
-                  </BlockStack>
-                  <InlineStack gap="200" align="end">
-                    <Button
-                      disabled={isLoading}
-                      variant="primary"
-                      onClick={setupWebhooks}
-                    >
-                      Setup
-                    </Button>
-                  </InlineStack>
-                </BlockStack>
-              </BlockStack>
-            </Card>
-            <Card>
-              <BlockStack gap="500">
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Useful Information
-                  </Text>
-                  <BlockStack gap="200">
-                    <InlineStack align="start" blockAlign="end" gap="200">
-                      <TextField
-                        label="Shopify Access Token"
-                        type="password"
-                        value={accessToken}
-                        autoComplete="off"
-                      />
-                      <Button
-                        icon={ClipboardIcon}
-                        onClick={() => {
-                          copyToClipboard(accessToken);
-                        }}
-                      ></Button>
-                    </InlineStack>
-                  </BlockStack>
-                </BlockStack>
               </BlockStack>
             </Card>
           </Layout.Section>
           <Layout.Section variant="oneThird">
             <BlockStack gap="500">
               <Card>
-                <BlockStack gap="200">
+                <BlockStack gap="300">
                   <Text as="h2" variant="headingMd">
-                    App template specs
-                  </Text>
-                  <BlockStack gap="200">
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Framework
-                      </Text>
-                      <Link
-                        url="https://remix.run"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        Remix
-                      </Link>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Database
-                      </Text>
-                      <Link
-                        url="https://www.prisma.io/"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        Prisma
-                      </Link>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Interface
-                      </Text>
-                      <span>
-                        <Link
-                          url="https://polaris.shopify.com"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          Polaris
-                        </Link>
-                        {", "}
-                        <Link
-                          url="https://shopify.dev/docs/apps/tools/app-bridge"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          App Bridge
-                        </Link>
-                      </span>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        API
-                      </Text>
-                      <Link
-                        url="https://shopify.dev/docs/api/admin-graphql"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphQL API
-                      </Link>
-                    </InlineStack>
-                  </BlockStack>
-                </BlockStack>
-              </Card>
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Next steps
+                    Resources
                   </Text>
                   <List>
                     <List.Item>
-                      Build an{" "}
                       <Link
-                        url="https://shopify.dev/docs/apps/getting-started/build-app-example"
+                        url="https://hookdeck.com/docs?ref=shopifyapp-livenotifications"
                         target="_blank"
-                        removeUnderline
                       >
-                        {" "}
-                        example app
-                      </Link>{" "}
-                      to get started
+                        Hookdeck Documentation
+                      </Link>
                     </List.Item>
                     <List.Item>
-                      Explore Shopify's API with{" "}
                       <Link
-                        url="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
+                        url="https://ably.com/docs?ref=shopifyapp-livenotifications"
                         target="_blank"
-                        removeUnderline
                       >
-                        GraphiQL
+                        Ably Documentation
+                      </Link>
+                    </List.Item>
+                    <List.Item>
+                      <Link
+                        url="https://shopify.dev/docs/api/admin-graphql"
+                        target="_blank"
+                      >
+                        Shopify GraphQL API
                       </Link>
                     </List.Item>
                   </List>
