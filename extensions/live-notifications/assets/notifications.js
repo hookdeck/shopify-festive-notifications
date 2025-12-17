@@ -184,16 +184,4 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   connectAbly();
-
-  // TEST: Create product snowflakes every 3 seconds for testing
-  console.log(
-    "🧪 Starting test mode - creating product snowflakes every 3 seconds",
-  );
-  setInterval(() => {
-    const testImage =
-      "https://cdn.shopify.com/s/files/1/0713/1827/4268/files/unisex-staple-t-shirt-heather-midnight-navy-front-687a4ef6b87e0.jpg?v=1752846082";
-    const testProduct = "Test Product " + Date.now();
-    console.log("🧪 Creating test product snowflake");
-    createProductSnowflake(testImage, testProduct);
-  }, 3000);
 });
