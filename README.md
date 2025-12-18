@@ -127,7 +127,7 @@ Before setting up this app, you'll need:
 1. **Node.js** (v18.20+, v20.10+, or v21.0.0+)
 2. **Shopify Partner Account** - [Create one here](https://partners.shopify.com/)
 3. **Shopify Development Store** - Create from your Partner Dashboard
-4. **Hookdeck Account** - [Sign up at hookdeck.com](https://dashboard.hookdeck.com/signup) for the Event Gateway
+4. **Hookdeck Account** - [Sign up at hookdeck.com](https://dashboard.hookdeck.com/signup?ref=github-shopify-festive-notifications) for the Event Gateway
 5. **Hookdeck CLI** - Install globally with `npm install -g @hookdeck/cli`
 6. **Ably Account** - [Sign up at ably.com](https://ably.com)
 
@@ -135,7 +135,7 @@ Before setting up this app, you'll need:
 
 ### Hookdeck API Key
 
-1. Log in to your [Hookdeck Dashboard](https://dashboard.hookdeck.com)
+1. Log in to your [Hookdeck Dashboard](https://dashboard.hookdeck.com?ref=github-shopify-festive-notifications)
 2. Navigate to Settings → API Keys
 3. Create or copy your API key
 
@@ -426,7 +426,7 @@ live-notifications/
 
 - **[Remix](https://remix.run/)** - Full-stack web framework
 - **[Shopify App Remix](https://shopify.dev/docs/api/shopify-app-remix)** - Shopify app framework for Remix
-- **[Hookdeck Event Gateway](https://hookdeck.com)** - Webhook infrastructure for reliable delivery and event routing
+- **[Hookdeck Event Gateway](https://hookdeck.com?ref=github-shopify-festive-notifications)** - Webhook infrastructure for reliable delivery and event routing
 - **[Ably](https://ably.com)** - Real-time pub/sub messaging platform
 - **[Prisma](https://www.prisma.io/)** - Database ORM
 - **[Shopify Theme App Extensions](https://shopify.dev/docs/apps/online-store/theme-app-extensions)** - Storefront integration
@@ -437,7 +437,7 @@ live-notifications/
 - [Shopify Webhooks](https://shopify.dev/docs/apps/build/webhooks)
 - [Shopify Theme App Extensions](https://shopify.dev/docs/apps/online-store/theme-app-extensions)
 - [Shopify Admin GraphQL API](https://shopify.dev/docs/api/admin-graphql)
-- [Hookdeck Event Gateway Documentation](https://hookdeck.com/docs)
+- [Hookdeck Event Gateway Documentation](https://hookdeck.com/docs?ref=github-shopify-festive-notifications)
 - [Ably Documentation](https://ably.com/docs)
 - [Remix Documentation](https://remix.run/docs)
 
@@ -446,7 +446,7 @@ live-notifications/
 - [Shopify App Tutorial](https://shopify.dev/docs/apps/getting-started)
 - [Webhooks Best Practices](https://shopify.dev/docs/apps/build/webhooks/best-practices)
 - [Theme App Extension Tutorial](https://shopify.dev/docs/apps/online-store/theme-app-extensions/getting-started)
-- [Hookdeck Event Gateway Guide](https://hookdeck.com/webhooks)
+- [Hookdeck Event Gateway Guide](https://hookdeck.com/webhooks?ref=github-shopify-festive-notifications)
 - [Ably Realtime Guide](https://ably.com/docs/realtime)
 
 ## Limitations & Considerations
