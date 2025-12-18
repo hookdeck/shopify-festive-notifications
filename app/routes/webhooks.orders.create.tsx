@@ -7,6 +7,7 @@ function log(message: string, data?: any) {
   const timestamp = new Date().toISOString();
   const logLine = `[${timestamp}] ${message}${data ? "\n" + JSON.stringify(data, null, 2) : ""}\n\n`;
   try {
+    console.log(logLine);
     appendFileSync("webhook-debug.log", logLine);
   } catch (e) {
     // Ignore

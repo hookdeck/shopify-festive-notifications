@@ -66,9 +66,8 @@ export async function publishToHookdeck(
 ): Promise<HookdeckPublishResponse> {
   const url = "https://hkdk.events/v1/publish";
 
-  console.error(`[HOOKDECK] Publishing to source: ${sourceName}`);
-  console.error(`[HOOKDECK] Payload:`, JSON.stringify(data, null, 2));
-
+  console.log(`[HOOKDECK] Publishing to source: ${sourceName}`);
+  console.log(`[HOOKDECK] Payload:`, JSON.stringify(data, null, 2));
   // Get API key from environment
   const apiKey = process.env.HOOKDECK_API_KEY;
   if (!apiKey) {
@@ -87,7 +86,7 @@ export async function publishToHookdeck(
       body: JSON.stringify({ data }),
     });
 
-    console.error(`[HOOKDECK] Response status: ${response.status}`);
+    console.log(`[HOOKDECK] Response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -98,10 +97,10 @@ export async function publishToHookdeck(
     }
 
     const result = await response.json();
-    console.error(`[HOOKDECK] Publish response:`, JSON.stringify(result));
+    console.log(`[HOOKDECK] Publish response:`, JSON.stringify(result));
     return result;
   } catch (error) {
-    console.error("[HOOKDECK] Error publishing to Hookdeck:", error);
+    console.log("[HOOKDECK] Error publishing to Hookdeck:", error);
     throw error;
   }
 }
@@ -118,7 +117,7 @@ async function fetchProductImage(
   productId: number,
 ): Promise<string | undefined> {
   try {
-    console.error(`[HOOKDECK] Fetching image for product ${productId}`);
+    console.log(`[HOOKDECK] Fetching image for product ${productId}`);
     const response = await admin.graphql(
       `#graphql
       query getProduct($id: ID!) {
@@ -137,7 +136,7 @@ async function fetchProductImage(
 
     const data = await response.json();
     const imageUrl = data?.data?.product?.featuredImage?.url;
-    console.error(`[HOOKDECK] Image URL for product ${productId}:`, imageUrl);
+    console.log(`[HOOKDECK] Image URL for product ${productId}:`, imageUrl);
     return imageUrl;
   } catch (error) {
     console.error(
