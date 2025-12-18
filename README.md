@@ -28,6 +28,33 @@ The application uses two Hookdeck Event Gateway connections for reliable webhook
 - Publishes PII-free notifications to Event Gateway
 - Event Gateway forwards to Ably for real-time broadcast
 
+### Flow Diagram
+
+```mermaid
+sequenceDiagram
+    participant Shopify
+    participant EventGateway as Hookdeck Event Gateway
+    participant App as Remix App<br/>(webhooks.orders.create.tsx)
+    participant Ably
+    participant Storefront as Storefront Extension<br/>(notifications.js)
+
+    Note over Shopify: 1. Order Created
+    Shopify->>EventGateway: 2. POST /webhooks (orders/create)
+    Note over EventGateway: 3. Receives & queues webhook<br/>at Source (Connection 1)
+    EventGateway->>App: 4. Delivers webhook with retries
+    Note over App: 5. Extracts order data
+    App->>App: 6. Transform to PII-free notification
+    Note over App: 7. Removes customer PII<br/>Fetches product images
+    App->>EventGateway: 8. POST to Publish API<br/>(shopify-notifications-publish)
+    Note over EventGateway: 9. Queues event<br/>(Connection 2)
+    EventGateway->>Ably: 10. Forwards to Ably REST API
+    Note over Ably: 11. Broadcasts to channel
+    Ably->>Storefront: 12. Real-time notification
+    Note over Storefront: 13. Displays notification<br/>with snowflake animation
+```
+
+### Step-by-Step Flow
+
 ```
 1. Order Created in Shopify
    ↓
