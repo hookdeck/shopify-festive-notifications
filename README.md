@@ -2,6 +2,8 @@
 
 A developer tutorial application demonstrating how to integrate Shopify webhooks, the Hookdeck Event Gateway, and Ably to display real-time purchase notifications in a Shopify online store with festive animations.
 
+![Demo of events in the Shop UI with snowflake animations](docs/demo.gif)
+
 ## What This Demonstrates
 
 This is an example/tutorial app that shows developers how to:
